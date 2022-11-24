@@ -1,0 +1,57 @@
+{
+  DNSName: "gateway.transit.dazn-dev.com",
+  HostedZones: [
+    {
+      CallerReference: "terraform-20210722124809095600000002",
+      Config: {
+        Comment: "Managed by Terraform",
+        PrivateZone: false
+      },
+      Id: "/hostedzone/Z0357242PCZG2GJXXU4A",
+      Name: "gateway.transit.dazn-dev.com.",
+      ResourceRecordSetCount: 3
+    },
+    {
+      CallerReference: "terraform-20210722124809095600000001",
+      Config: {
+        Comment: "Managed by Terraform",
+        PrivateZone: false
+      },
+      Id: "/hostedzone/Z04327113HPEOZCM04TEY",
+      Name: "dev.gateway.transit.dazn-dev.com.",
+      ResourceRecordSetCount: 6
+    },
+    {
+      CallerReference: "terraform-20210805095139368400000001",
+      Config: {
+        Comment: "Managed by Terraform",
+        PrivateZone: false
+      },
+      Id: "/hostedzone/Z002699321BYYZ8MJJOWC",
+      Name: "k8s.transit.dazn-dev.com.",
+      ResourceRecordSetCount: 3
+    },
+    {
+      CallerReference: "terraform-20210805095139368600000002",
+      Config: {
+        Comment: "Managed by Terraform",
+        PrivateZone: false
+      },
+      Id: "/hostedzone/Z01596341A0QNJP8M00JI",
+      Name: "dev.k8s.transit.dazn-dev.com.",
+      ResourceRecordSetCount: 2
+    },
+    {
+      CallerReference: "eca0f844-c700-4a40-85d3-93d48bf99bd5",
+      Config: {
+        Comment: "",
+        PrivateZone: false
+      },
+      Id: "/hostedzone/Z0988268S0E767T2QY39",
+      Name: "ingress.dazn.com.",
+      ResourceRecordSetCount: 2
+    }
+  ],
+  IsTruncated: false,
+  MaxItems: "100"
+}

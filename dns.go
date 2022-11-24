@@ -33,6 +33,7 @@ func main() {
 	NewClusterSuffix := flag.String("new", "foxdev", "Suffix of the new cluster")
 	trafficSwitchPercentage := flag.Int64("traffic", 10, "Percentage of traffic to switch to new cluster")
 	region := flag.String("region", "euc1", "Short region name. Can be euc1, use1 or apn1")
+	environment := flag.String("environment", "internal-dev", "Environment to run this against")
 	flag.Parse()
 
 	trafficWeight := convertPerecentageToWeight(*trafficSwitchPercentage)
@@ -65,7 +66,7 @@ func main() {
 	// Record.name will be dev.dazn-gateway.com was gateway.transit.dazn-dev.com.
 	var hostedZoneId string
 	for _, zone := range zoneInfo {
-		if zone.Name == "internal-dev.dazn-gateway.com." {
+		if zone.Name == fmt.Sprintf("%s.dazn-gateway.com.", *environment) {
 			hostedZoneId = zone.Id
 		}
 	}
@@ -81,7 +82,7 @@ func main() {
 	}
 	recordInfo := []recordSetInfo{}
 	for _, record := range recordSets.ResourceRecordSets {
-		if *record.Name == fmt.Sprintf("%s.internal-dev.dazn-gateway.com.", region) {
+		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 			recordInfo = append(recordInfo, recordSetInfo{
 				Name:           *record.Name,
 				Type:           *record.Type,
@@ -103,7 +104,7 @@ func main() {
 		newRecordSets, _ := svc.ListResourceRecordSets(paginateIdInput)
 		for paginate {
 			for _, newRecord := range newRecordSets.ResourceRecordSets {
-				if *newRecord.Name == "euc1.dev.dazn-gateway.com." {
+				if *newRecord.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 					recordInfo = append(recordInfo, recordSetInfo{
 						Name:           *newRecord.Name,
 						Type:           *newRecord.Type,

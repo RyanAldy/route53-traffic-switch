@@ -1,10 +1,5 @@
 package main
 
-// Parameters needed for this to work:
-// 1) suffix of old cluster
-// 2) suffix of the new cluster
-// 3) Percentage of Traffic switch
-
 import (
 	"context"
 	"flag"
@@ -23,7 +18,7 @@ func main() {
 
 	ctx := context.TODO()
 	oldClusterSuffix := flag.String("old", "foxdev", "Suffix of the old cluster")
-	NewClusterSuffix := flag.String("new", "foxdev", "Suffix of the new cluster")
+	newClusterSuffix := flag.String("new", "foxdev", "Suffix of the new cluster")
 	trafficSwitchPercentage := flag.Int64("traffic", 10, "Percentage of traffic to switch to new cluster")
 	region := flag.String("region", "euc1", "Short region name. Can be euc1, use1 or apn1")
 	environment := flag.String("environment", "internal-dev", "Environment to run this against")
@@ -122,22 +117,23 @@ func main() {
 	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
 
+	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage)
+}
+
+func switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64) {
 	var dnsChanges int = 0
 
-	// Traffic switch - put into separate function
-	for _, r := range recordInfo {
-		if r.Type == "A" && strings.Contains(r.SetIndentifier, *NewClusterSuffix) {
+	for _, r := range records {
+		if r.Type == "A" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
 			// only need to use old cluster suffix when 100% switchover
-			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, trafficWeight)
-			fmt.Println(resourceRecordSetInput)
-			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - A Type record\n", *trafficSwitchPercentage, *oldClusterSuffix, r.SetIndentifier)
+			buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, weight)
+			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - A Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
 			dnsChanges++
 		}
-		if r.Type == "AAAA" && strings.Contains(r.SetIndentifier, *NewClusterSuffix) {
-			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, trafficWeight)
-			fmt.Println(resourceRecordSetInput)
-			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - AAAA Type record\n", *trafficSwitchPercentage, *oldClusterSuffix, r.SetIndentifier)
+		if r.Type == "AAAA" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
+			buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, weight)
+			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - AAAA Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
 			dnsChanges++
 		}

@@ -6,29 +6,22 @@ package main
 // 3) Percentage of Traffic switch
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+
+	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
-type hostedZoneInfo struct {
-	Id   string
-	Name string
-}
-
-type recordSetInfo struct {
-	Name           string
-	Type           string
-	SetIndentifier string
-	Weight         int64
-}
-
 func main() {
-	// Need to export AWS env vars for this to run at the moment
 
+	ctx := context.TODO()
 	oldClusterSuffix := flag.String("old", "foxdev", "Suffix of the old cluster")
 	NewClusterSuffix := flag.String("new", "foxdev", "Suffix of the new cluster")
 	trafficSwitchPercentage := flag.Int64("traffic", 10, "Percentage of traffic to switch to new cluster")
@@ -38,24 +31,27 @@ func main() {
 
 	trafficWeight := convertPerecentageToWeight(*trafficSwitchPercentage)
 
-	// For stage-dev this would be: dev.dazn-gateway.com
-	// To be parameterised also?
-	// dnsInput := "dev.dazn-gateway.com"
+	// To be parameterised also
 	dnsInput := "internal-dev.dazn-gateway.com"
-	svc := route53.New(session.New())
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("eu-central-1"))
+	if err != nil {
+		log.Fatalf("failed to load configuration, %v", err)
+	}
+
+	svc := route53.NewFromConfig(cfg)
 
 	hostedZoneInput := &route53.ListHostedZonesByNameInput{
 		DNSName: &dnsInput,
 	}
 
-	hostedZonesResult, err := svc.ListHostedZonesByName(hostedZoneInput)
+	hostedZonesResult, err := svc.ListHostedZonesByName(ctx, hostedZoneInput)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	extractedInfo := hostedZonesResult.HostedZones
 
-	// Save result into struct
 	zoneInfo := []hostedZoneInfo{}
 	for _, info := range extractedInfo {
 		zoneInfo = append(zoneInfo, hostedZoneInfo{Id: *info.Id, Name: *info.Name})
@@ -63,20 +59,19 @@ func main() {
 
 	// Loop over struct to check which one matches the Name we're looking for
 	//  I need to get the id of the Hosted Zone to get more info
-	// Record.name will be dev.dazn-gateway.com was gateway.transit.dazn-dev.com.
 	var hostedZoneId string
 	for _, zone := range zoneInfo {
 		if zone.Name == fmt.Sprintf("%s.dazn-gateway.com.", *environment) {
 			hostedZoneId = zone.Id
 		}
 	}
-	fmt.Println(hostedZoneId)
+	// fmt.Println(hostedZoneId)
 
 	idInput := &route53.ListResourceRecordSetsInput{
 		HostedZoneId: &hostedZoneId,
 	}
 
-	recordSets, err := svc.ListResourceRecordSets(idInput)
+	recordSets, err := svc.ListResourceRecordSets(ctx, idInput)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
@@ -85,15 +80,15 @@ func main() {
 		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 			recordInfo = append(recordInfo, recordSetInfo{
 				Name:           *record.Name,
-				Type:           *record.Type,
+				Type:           record.Type,
 				SetIndentifier: *record.SetIdentifier,
 				Weight:         *record.Weight})
 		}
 	}
-	// Check if 2nd page, if so initalise vars for call
+
 	startPagiante := recordSets.IsTruncated
 
-	if *startPagiante {
+	if startPagiante {
 		var paginate = true
 		paginateIdInput := &route53.ListResourceRecordSetsInput{
 			HostedZoneId:          &hostedZoneId,
@@ -101,31 +96,34 @@ func main() {
 			StartRecordType:       recordSets.NextRecordType,
 			StartRecordIdentifier: recordSets.NextRecordIdentifier,
 		}
-		newRecordSets, _ := svc.ListResourceRecordSets(paginateIdInput)
+		newRecordSets, _ := svc.ListResourceRecordSets(ctx, paginateIdInput)
 		for paginate {
 			for _, newRecord := range newRecordSets.ResourceRecordSets {
 				if *newRecord.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 					recordInfo = append(recordInfo, recordSetInfo{
 						Name:           *newRecord.Name,
-						Type:           *newRecord.Type,
+						Type:           newRecord.Type,
 						SetIndentifier: *newRecord.SetIdentifier,
 						Weight:         *newRecord.Weight})
 				}
 			}
-			// reinitalise
-			// Refresh page data and next page params
-			paginate = *newRecordSets.IsTruncated
+
+			paginate = newRecordSets.IsTruncated
 			paginateIdInput := &route53.ListResourceRecordSetsInput{
 				HostedZoneId:          &hostedZoneId,
 				StartRecordName:       recordSets.NextRecordName,
 				StartRecordType:       recordSets.NextRecordType,
 				StartRecordIdentifier: recordSets.NextRecordIdentifier,
 			}
-			newRecordSets, _ = svc.ListResourceRecordSets(paginateIdInput)
+			newRecordSets, _ = svc.ListResourceRecordSets(ctx, paginateIdInput)
 		}
 	}
 
+	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
+
+	var dnsChanges int = 0
+
 	// Traffic switch - put into separate function
 	for _, r := range recordInfo {
 		if r.Type == "A" && strings.Contains(r.SetIndentifier, *NewClusterSuffix) {
@@ -134,27 +132,32 @@ func main() {
 			fmt.Println(resourceRecordSetInput)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - A Type record\n", *trafficSwitchPercentage, *oldClusterSuffix, r.SetIndentifier)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
+			dnsChanges++
 		}
 		if r.Type == "AAAA" && strings.Contains(r.SetIndentifier, *NewClusterSuffix) {
 			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, trafficWeight)
 			fmt.Println(resourceRecordSetInput)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - AAAA Type record\n", *trafficSwitchPercentage, *oldClusterSuffix, r.SetIndentifier)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
+			dnsChanges++
 		}
+	}
+	if dnsChanges == 0 {
+		fmt.Println("Cluster DNS record does not exist")
+		os.Exit(1)
 	}
 }
 
 func buildChangeTrafficWeightsInput(zoneName string, identifier string, weight int64) *route53.ChangeResourceRecordSetsInput {
-	action := "UPSERT"
-	record := &route53.ResourceRecordSet{Name: &zoneName, SetIdentifier: &identifier, Weight: &weight}
-	changeInput := &route53.Change{Action: &action, ResourceRecordSet: record}
+	record := r53types.ResourceRecordSet{Name: &zoneName, SetIdentifier: &identifier, Weight: &weight}
+	changeInput := r53types.Change{Action: "UPSERT", ResourceRecordSet: &record}
 
-	changeInputArray := make([]*route53.Change, 0)
+	changeInputArray := make([]r53types.Change, 0)
 	changeInputArray = append(changeInputArray, changeInput)
 
-	changeSet := &route53.ChangeBatch{Changes: changeInputArray}
+	changeSet := r53types.ChangeBatch{Changes: changeInputArray}
 	changeWeightInput := &route53.ChangeResourceRecordSetsInput{
-		ChangeBatch: changeSet,
+		ChangeBatch: &changeSet,
 	}
 	return changeWeightInput
 }

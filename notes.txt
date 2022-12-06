@@ -1,0 +1,32 @@
+// func switchTraffic(recordInfo []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, trafficWeight int64, trafficSwitchPercentage int64) {
+    // 	for _, r := range recordInfo {
+    // 		if r.Type == "A" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
+    // 			// only need to use old cluster suffix when 100% switchover
+    // 			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, trafficWeight)
+    // 			fmt.Println(resourceRecordSetInput)
+    // 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - A Type record\n", trafficSwitchPercentage, oldClusterSuffix, r.SetIndentifier)
+    // 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
+    // 		}
+    // 		if r.Type == "AAAA" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
+    // 			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, trafficWeight)
+    // 			fmt.Println(resourceRecordSetInput)
+    // 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - AAAA Type record\n", trafficSwitchPercentage, oldClusterSuffix, r.SetIndentifier)
+    // 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
+    // 		}
+    // 	}
+    // }
+
+
+
+	// Pointer to modify and a copy if it doesn't
+	// env := "dev" // made need this for the multiple envs in stage
+
+// Questions...
+// Create this as a CLI app / allowing inputs to the program? Yes for now, when in
+// a lambda function then we'll process the JSON of the event
+// Create separate functions (one for 10%, one for 50% and one for 100%)
+// Or one function, with parameters and a case statement (this to start for demo)
+// Need to run this per region
+// Shall I automatically do for all regions or allow params to be passed in
+// Check whether it already has 10% switchover for example? and not allow,
+// however that would never allow us to switch traffic back

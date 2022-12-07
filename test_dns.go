@@ -36,16 +36,15 @@ func (r mockRoute53Client) ListResourceRecordSets(ctx context.Context, params *r
 	return &route53.ListResourceRecordSetsOutput{}, nil
 }
 
-var recordInfo = []recordSetInfo{
-	recordSetInfo{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-657", 0},
-	recordSetInfo{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-696", 0},
-	recordSetInfo{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-697", 0},
-	recordSetInfo{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-657", 0},
-	recordSetInfo{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-696", 0},
-	recordSetInfo{"{euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-697", 0},
-}
-
 func TestUpdateRecords(t *testing.T) {
+	var recordInfo = []recordSetInfo{
+		{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-657", 0},
+		{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-696", 0},
+		{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("A"), "mesh-697", 0},
+		{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-657", 0},
+		{"euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-696", 0},
+		{"{euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-697", 0},
+	}
 	tests := []struct {
 		name             string
 		errorExpected    bool

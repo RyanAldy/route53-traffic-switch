@@ -113,7 +113,7 @@ func (a *App) handler() (string, error) {
 	return "Successfully switched over traffic", nil
 }
 
-func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) {
+func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) error {
 	var dnsChanges int = 0
 
 	for _, r := range records {
@@ -130,6 +130,7 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 		fmt.Println("Cluster DNS record does not exist - no changes were made")
 		os.Exit(1)
 	}
+	return nil
 }
 
 func buildChangeTrafficWeightsInput(zoneName string, identifier string, weight int64) *route53.ChangeResourceRecordSetsInput {

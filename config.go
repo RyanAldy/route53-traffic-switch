@@ -13,3 +13,9 @@ type recordSetInfo struct {
 	SetIdentifier string
 	Weight        int64
 }
+
+type Config struct {
+	AppName   string `env:"APP_NAME,default=dns-switchover"`
+	Owner     string `env:"OWNER,default=mesh@dazn.com"`
+	AwsRegion string `env:"AWS_REGION,default=eu-central-1"`
+}

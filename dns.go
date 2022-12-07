@@ -24,8 +24,8 @@ func (a *App) handler() (string, error) {
 
 	trafficWeight := convertPerecentageToWeight(*trafficSwitchPercentage)
 
-	// To be parameterised also - will be different for prod
-	dnsInput := "internal-dev.dazn-gateway.com"
+	// Will be different for prod - need to add function
+	dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *environment)
 
 	hostedZoneInput := &route53.ListHostedZonesByNameInput{
 		DNSName: &dnsInput,
@@ -47,11 +47,10 @@ func (a *App) handler() (string, error) {
 	//  I need to get the id of the Hosted Zone to get more info
 	var hostedZoneId string
 	for _, zone := range zoneInfo {
-		if zone.Name == fmt.Sprintf("%s.dazn-gateway.com.", *environment) {
+		if zone.Name == dnsInput {
 			hostedZoneId = zone.Id
 		}
 	}
-	// fmt.Println(hostedZoneId)
 
 	idInput := &route53.ListResourceRecordSetsInput{
 		HostedZoneId: &hostedZoneId,

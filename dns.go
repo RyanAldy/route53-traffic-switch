@@ -43,8 +43,6 @@ func (a *App) handler() (string, error) {
 		zoneInfo = append(zoneInfo, hostedZoneInfo{Id: *info.Id, Name: *info.Name})
 	}
 
-	// Loop over struct to check which one matches the Name we're looking for
-	//  I need to get the id of the Hosted Zone to get more info
 	var hostedZoneId string
 	for _, zone := range zoneInfo {
 		if zone.Name == dnsInput {
@@ -147,6 +145,7 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 }
 
 func buildChangeTrafficWeightsInput(zoneName string, identifier string, weight int64) *route53.ChangeResourceRecordSetsInput {
+	// Look at this tomorrow - amending this could help me cut down - I do still need to the hostedzoneid from somewhere though
 	record := r53types.ResourceRecordSet{Name: &zoneName, SetIdentifier: &identifier, Weight: &weight}
 	changeInput := r53types.Change{Action: "UPSERT", ResourceRecordSet: &record}
 

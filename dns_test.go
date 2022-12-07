@@ -14,8 +14,6 @@ import (
 
 type mockRoute53Client struct{}
 
-// ctx := context.TODO()
-
 func (r mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ChangeResourceRecordSetsOutput, error) {
 
 	timeNow := time.Now()

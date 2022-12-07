@@ -32,4 +32,11 @@
 // however that would never allow us to switch traffic back
 
 
-// loop over a switch traffic function, passing in the type?
+// loop over a switch traffic function, passing in the type? - Done
+
+// Final logic:
+// Add 100% switch
+// Add config to App object
+
+// Write unit tests for failures (clusters missing)
+// From this do TDD for checking input percentages

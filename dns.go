@@ -121,7 +121,11 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 			// only need to use old cluster suffix when 100% switchover
 			buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
-			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
+			// resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
+
+			// if err != nil {
+			// 	return errors.Wrapf(err, "failed to update the %s type DNS records", r.Type)
+			// }
 			dnsChanges++
 		}
 	}

@@ -117,29 +117,25 @@ func main() {
 	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
 
-	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage)
+	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
+	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
 }
 
-func switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64) {
+func switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) {
 	var dnsChanges int = 0
 
 	for _, r := range records {
-		if r.Type == "A" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
+		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIndentifier, newClusterSuffix) {
 			// only need to use old cluster suffix when 100% switchover
 			buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, weight)
-			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - A Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier)
-			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
-			dnsChanges++
-		}
-		if r.Type == "AAAA" && strings.Contains(r.SetIndentifier, newClusterSuffix) {
-			buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, weight)
-			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - AAAA Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier)
+			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier, r.Type)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
 			dnsChanges++
 		}
 	}
+	// Amend this logic?
 	if dnsChanges == 0 {
-		fmt.Println("Cluster DNS record does not exist")
+		fmt.Println("Cluster DNS record does not exist - no changes were made")
 		os.Exit(1)
 	}
 }

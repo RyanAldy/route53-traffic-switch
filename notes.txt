@@ -30,3 +30,6 @@
 // Shall I automatically do for all regions or allow params to be passed in
 // Check whether it already has 10% switchover for example? and not allow,
 // however that would never allow us to switch traffic back
+
+
+// loop over a switch traffic function, passing in the type?

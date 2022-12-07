@@ -21,7 +21,7 @@ func (r mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *
 	timeNow := time.Now()
 	return &route53.ChangeResourceRecordSetsOutput{
 		ChangeInfo: &r53types.ChangeInfo{
-			Id:          aws.String("id123"),
+			Id:          aws.String("test123"),
 			Status:      r53types.ChangeStatusInsync,
 			SubmittedAt: &timeNow,
 		},

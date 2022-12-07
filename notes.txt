@@ -37,6 +37,10 @@
 // Final logic:
 // Add 100% switch
 // Add config to App object
+// Add function to switch region?
 
-// Write unit tests for failures (clusters missing)
+// Write unit tests for failures (clusters not existing etc)
 // From this do TDD for checking input percentages
+
+// Finally:
+// Structure code into correct GoLang directory structure

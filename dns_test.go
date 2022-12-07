@@ -44,34 +44,44 @@ func TestUpdateRecords(t *testing.T) {
 		{"{euc1.internal-dev.dazn-gateway.com.", r53types.RRType("AAAA"), "mesh-697", 0},
 	}
 	tests := []struct {
-		name             string
-		errorExpected    bool
-		old              string
-		new              string
-		records          []recordSetInfo
-		inputWeight      int64
-		weightPercentage int64
-		recordType       string
+		name                  string
+		errorExpected         bool
+		old                   string
+		new                   string
+		records               []recordSetInfo
+		weight                int64
+		inputWeightPercentage int64
+		recordType            string
 	}{
 		{
-			name:             "Modify Route53 records - Upsert A type",
-			errorExpected:    false,
-			old:              "mesh-657",
-			new:              "mesh-697",
-			records:          recordInfo,
-			inputWeight:      50,
-			weightPercentage: 255,
-			recordType:       "A",
+			name:                  "Modify Route53 records - Upsert A type",
+			errorExpected:         false,
+			old:                   "mesh-657",
+			new:                   "mesh-697",
+			records:               recordInfo,
+			weight:                255,
+			inputWeightPercentage: 50,
+			recordType:            "A",
 		},
 		{
-			name:             "Modify Route53 records - Upsert AAAA type",
-			errorExpected:    false,
-			old:              "mesh-657",
-			new:              "mesh-697",
-			records:          recordInfo,
-			inputWeight:      50,
-			weightPercentage: 255,
-			recordType:       "AAAA",
+			name:                  "Modify Route53 records - Upsert AAAA type",
+			errorExpected:         false,
+			old:                   "mesh-657",
+			new:                   "mesh-697",
+			records:               recordInfo,
+			weight:                0,
+			inputWeightPercentage: 100,
+			recordType:            "AAAA",
+		},
+		{
+			name:                  "Modify Route53 records - test incorrect cluster name input",
+			errorExpected:         true,
+			old:                   "mesh-xxx",
+			new:                   "mesh-697",
+			records:               recordInfo,
+			weight:                255,
+			inputWeightPercentage: 50,
+			recordType:            "AAAA",
 		},
 	}
 
@@ -81,7 +91,7 @@ func TestUpdateRecords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := app.switchTraffic(tt.records, tt.old, tt.new, tt.inputWeight, tt.weightPercentage, tt.recordType)
+			err := app.switchTraffic(tt.records, tt.old, tt.new, tt.weight, tt.inputWeightPercentage, tt.recordType)
 			if tt.errorExpected {
 				assert.Error(t, err)
 			} else {

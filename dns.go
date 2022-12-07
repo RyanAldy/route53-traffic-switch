@@ -4,10 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/route53"
+	"github.com/pkg/errors"
 
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
@@ -110,29 +110,35 @@ func (a *App) handler() (string, error) {
 
 	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
 	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
+	// Need to catch error from this function call
+
 	return "Successfully switched over traffic", nil
 }
 
 func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) error {
-	var dnsChanges int = 0
 
 	for _, r := range records {
-		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) {
-			// only need to use old cluster suffix when 100% switchover
-			buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
+		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) && weightPercentage != 100 {
+			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
-			// resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
 
-			// if err != nil {
-			// 	return errors.Wrapf(err, "failed to update the %s type DNS records", r.Type)
-			// }
-			dnsChanges++
+			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
+
+			if err != nil {
+				return errors.Wrapf(err, "Failed to update the %s type DNS records", r.Type)
+			}
+			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
+		} else if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, oldClusterSuffix) && weightPercentage == 100 {
+			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
+			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
+
+			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
+
+			if err != nil {
+				return errors.Wrapf(err, "Failed to update the %s type DNS records", r.Type)
+			}
+			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
 		}
-	}
-	// Amend this logic?
-	if dnsChanges == 0 {
-		fmt.Println("Cluster DNS record does not exist - no changes were made")
-		os.Exit(1)
 	}
 	return nil
 }
@@ -158,6 +164,12 @@ func convertPerecentageToWeight(trafficSwitchPercentage int64) int64 {
 		trafficWeight = 30
 	case 50:
 		trafficWeight = 255
+	case 100:
+		trafficWeight = 0
 	}
 	return trafficWeight
 }
+
+// func validateClusterNameInputs(records []recordSetInfo) bool {
+
+// }

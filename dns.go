@@ -116,7 +116,10 @@ func (a *App) handler() (string, error) {
 }
 
 func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) error {
-	var dnsUpdates int = 0
+
+	if !validateClusterNameInputs(records, oldClusterSuffix) || !validateClusterNameInputs(records, newClusterSuffix) {
+		return errors.New("Error updating cluster.  One of the clusters you input possibly does not exist")
+	}
 
 	for _, r := range records {
 		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) && weightPercentage != 100 {
@@ -128,7 +131,6 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 			if err != nil {
 				return errors.Wrapf(err, "Failed to update the %s type DNS records", r.Type)
 			}
-			dnsUpdates++
 			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
 		} else if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, oldClusterSuffix) && weightPercentage == 100 {
 			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
@@ -139,12 +141,8 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 			if err != nil {
 				return errors.Wrapf(err, "Failed to update the %s type DNS records", r.Type)
 			}
-			dnsUpdates++
 			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
 		}
-	}
-	if dnsUpdates == 0 {
-		return errors.New("Error updating cluster.  One of the clusters you input possibly does not exist")
 	}
 	return nil
 }
@@ -176,6 +174,11 @@ func convertPerecentageToWeight(trafficSwitchPercentage int64) int64 {
 	return trafficWeight
 }
 
-// func validateClusterNameInputs(records []recordSetInfo) bool {
-
-// }
+func validateClusterNameInputs(records []recordSetInfo, clusterSuffix string) bool {
+	for _, r := range records {
+		if strings.Contains(r.SetIdentifier, clusterSuffix) {
+			return true
+		}
+	}
+	return false
+}

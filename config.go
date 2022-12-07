@@ -8,8 +8,8 @@ type hostedZoneInfo struct {
 }
 
 type recordSetInfo struct {
-	Name           string
-	Type           r53types.RRType
-	SetIndentifier string
-	Weight         int64
+	Name          string
+	Type          r53types.RRType
+	SetIdentifier string
+	Weight        int64
 }

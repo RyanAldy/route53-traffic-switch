@@ -6,20 +6,20 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/route53/route53iface"
+
+	// "github.com/stretchr/testify/assert"
 
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
 type mockRoute53Client struct {
-	mockClient route53iface.Route53API
 }
 
 // type mockRoute53Client struct{}
 
 // ctx := context.TODO()
 
-func (r mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ChangeResourceRecordSetsOutput, error) {
+func (r *mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ChangeResourceRecordSetsOutput, error) {
 
 	timeNow := time.Now()
 	return &route53.ChangeResourceRecordSetsOutput{
@@ -53,15 +53,17 @@ func (r mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *
 // 			errorExpected: true,
 // 		},
 // 	}
-// 	config, _ := config.New()
-// 	app := &App{
-// 		route53Client: new(mockRoute53Client),
-// 		config:        config,
-// 	}
+// 	// config, _ := config.New()
+// 	// app := &App{
+// 	// 	route53Client: new(mockRoute53Client),
+// 	// 	config:        config,
+// 	// }
+
+// 	mockR53Client := &mockRoute53Client{}
 
 // 	for _, tt := range tests {
 // 		t.Run(tt.name, func(t *testing.T) {
-// 			err := app.modifyRoute53Records(tt.action, "test-service")
+// 			err := switchTraffic(mockR53Client, "test-service")
 // 			if tt.errorExpected {
 // 				assert.Error(t, err)
 // 			} else {

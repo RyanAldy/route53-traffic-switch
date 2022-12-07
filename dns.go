@@ -4,17 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
-func main() {
+func (a *App) handler() (string, error) {
 
 	ctx := context.TODO()
 	oldClusterSuffix := flag.String("old", "foxdev", "Suffix of the old cluster")
@@ -26,21 +24,14 @@ func main() {
 
 	trafficWeight := convertPerecentageToWeight(*trafficSwitchPercentage)
 
-	// To be parameterised also
+	// To be parameterised also - will be different for prod
 	dnsInput := "internal-dev.dazn-gateway.com"
-
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("eu-central-1"))
-	if err != nil {
-		log.Fatalf("failed to load configuration, %v", err)
-	}
-
-	svc := route53.NewFromConfig(cfg)
 
 	hostedZoneInput := &route53.ListHostedZonesByNameInput{
 		DNSName: &dnsInput,
 	}
 
-	hostedZonesResult, err := svc.ListHostedZonesByName(ctx, hostedZoneInput)
+	hostedZonesResult, err := a.route53Client.ListHostedZonesByName(ctx, hostedZoneInput)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -66,7 +57,7 @@ func main() {
 		HostedZoneId: &hostedZoneId,
 	}
 
-	recordSets, err := svc.ListResourceRecordSets(ctx, idInput)
+	recordSets, err := a.route53Client.ListResourceRecordSets(ctx, idInput)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
@@ -74,10 +65,10 @@ func main() {
 	for _, record := range recordSets.ResourceRecordSets {
 		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 			recordInfo = append(recordInfo, recordSetInfo{
-				Name:           *record.Name,
-				Type:           record.Type,
-				SetIndentifier: *record.SetIdentifier,
-				Weight:         *record.Weight})
+				Name:          *record.Name,
+				Type:          record.Type,
+				SetIdentifier: *record.SetIdentifier,
+				Weight:        *record.Weight})
 		}
 	}
 
@@ -91,15 +82,15 @@ func main() {
 			StartRecordType:       recordSets.NextRecordType,
 			StartRecordIdentifier: recordSets.NextRecordIdentifier,
 		}
-		newRecordSets, _ := svc.ListResourceRecordSets(ctx, paginateIdInput)
+		newRecordSets, _ := a.route53Client.ListResourceRecordSets(ctx, paginateIdInput)
 		for paginate {
 			for _, newRecord := range newRecordSets.ResourceRecordSets {
 				if *newRecord.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
 					recordInfo = append(recordInfo, recordSetInfo{
-						Name:           *newRecord.Name,
-						Type:           newRecord.Type,
-						SetIndentifier: *newRecord.SetIdentifier,
-						Weight:         *newRecord.Weight})
+						Name:          *newRecord.Name,
+						Type:          newRecord.Type,
+						SetIdentifier: *newRecord.SetIdentifier,
+						Weight:        *newRecord.Weight})
 				}
 			}
 
@@ -110,25 +101,26 @@ func main() {
 				StartRecordType:       recordSets.NextRecordType,
 				StartRecordIdentifier: recordSets.NextRecordIdentifier,
 			}
-			newRecordSets, _ = svc.ListResourceRecordSets(ctx, paginateIdInput)
+			newRecordSets, _ = a.route53Client.ListResourceRecordSets(ctx, paginateIdInput)
 		}
 	}
 
 	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
 
-	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
-	switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
+	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
+	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
+	return "Successfully switched over traffic", nil
 }
 
-func switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) {
+func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) {
 	var dnsChanges int = 0
 
 	for _, r := range records {
-		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIndentifier, newClusterSuffix) {
+		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) {
 			// only need to use old cluster suffix when 100% switchover
-			buildChangeTrafficWeightsInput(r.Name, r.SetIndentifier, weight)
-			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIndentifier, r.Type)
+			buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
+			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
 			// svc.ChangeResourceRecordSets(resourceRecordSetInput)
 			dnsChanges++
 		}

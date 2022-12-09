@@ -2,20 +2,20 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/pkg/errors"
 
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
-type hostedZoneInfo struct {
-	Id   string
-	Name string
-}
+// type hostedZoneInfo struct {
+// 	Id   string
+// 	Name string
+// }
 
 type recordSetInfo struct {
 	Name          string
@@ -27,43 +27,46 @@ type recordSetInfo struct {
 func (a *App) handler() (string, error) {
 
 	ctx := context.TODO()
-	oldClusterSuffix := flag.String("old", "foxdev", "Suffix of the old cluster")
-	newClusterSuffix := flag.String("new", "foxdev", "Suffix of the new cluster")
-	trafficSwitchPercentage := flag.Int64("traffic", 10, "Percentage of traffic to switch to new cluster")
-	region := flag.String("region", "euc1", "Short region name. Can be euc1, use1 or apn1")
-	environment := flag.String("environment", "internal-dev", "Environment to run this against")
-	flag.Parse()
 
-	trafficWeight := convertPerecentageToWeight(*trafficSwitchPercentage)
+	trafficWeight, err := convertPerecentageToWeight(*a.trafficSwitchPercentage)
+	if err != nil {
+		return "", err
+	}
 
 	// Will be different for prod - need to add function
-	dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *environment)
+	// dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *a.environment)
 
-	hostedZoneInput := &route53.ListHostedZonesByNameInput{
-		DNSName: &dnsInput,
-	}
+	// hostedZoneInput := &route53.ListHostedZonesByNameInput{
+	// 	DNSName: &dnsInput,
+	// }
+	// fmt.Println(*hostedZoneInput)
 
-	hostedZonesResult, err := a.route53Client.ListHostedZonesByName(ctx, hostedZoneInput)
-	if err != nil {
-		fmt.Println(err)
-	}
+	// hostedZonesResult, err := a.route53Client.ListHostedZonesByName(ctx, hostedZoneInput)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fmt.Println(*hostedZonesResult)
 
-	extractedInfo := hostedZonesResult.HostedZones
+	// extractedInfo := hostedZonesResult.HostedZones
 
-	zoneInfo := []hostedZoneInfo{}
-	for _, info := range extractedInfo {
-		zoneInfo = append(zoneInfo, hostedZoneInfo{Id: *info.Id, Name: *info.Name})
-	}
+	// zoneInfo := []hostedZoneInfo{}
+	// for _, info := range extractedInfo {
+	// 	zoneInfo = append(zoneInfo, hostedZoneInfo{Id: *info.Id, Name: *info.Name})
+	// }
 
-	var hostedZoneId string
-	for _, zone := range zoneInfo {
-		if zone.Name == dnsInput {
-			hostedZoneId = zone.Id
-		}
-	}
+	// var hostedZoneId string
+	// for _, zone := range zoneInfo {
+	// 	if zone.Name == dnsInput {
+	// 		hostedZoneId = zone.Id
+	// 	}
+	// }
+
+	// hostedZoneId := "Z080964036XWOHXR8180L"
+
+	hostedZoneId := &a.config.HostedZoneID
 
 	idInput := &route53.ListResourceRecordSetsInput{
-		HostedZoneId: &hostedZoneId,
+		HostedZoneId: hostedZoneId,
 	}
 
 	recordSets, err := a.route53Client.ListResourceRecordSets(ctx, idInput)
@@ -72,7 +75,7 @@ func (a *App) handler() (string, error) {
 	}
 	recordInfo := []recordSetInfo{}
 	for _, record := range recordSets.ResourceRecordSets {
-		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
+		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *a.region, *a.environment) {
 			recordInfo = append(recordInfo, recordSetInfo{
 				Name:          *record.Name,
 				Type:          record.Type,
@@ -86,7 +89,7 @@ func (a *App) handler() (string, error) {
 	if startPagiante {
 		var paginate = true
 		paginateIdInput := &route53.ListResourceRecordSetsInput{
-			HostedZoneId:          &hostedZoneId,
+			HostedZoneId:          hostedZoneId,
 			StartRecordName:       recordSets.NextRecordName,
 			StartRecordType:       recordSets.NextRecordType,
 			StartRecordIdentifier: recordSets.NextRecordIdentifier,
@@ -94,7 +97,7 @@ func (a *App) handler() (string, error) {
 		newRecordSets, _ := a.route53Client.ListResourceRecordSets(ctx, paginateIdInput)
 		for paginate {
 			for _, newRecord := range newRecordSets.ResourceRecordSets {
-				if *newRecord.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *region, *environment) {
+				if *newRecord.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *a.region, *a.environment) {
 					recordInfo = append(recordInfo, recordSetInfo{
 						Name:          *newRecord.Name,
 						Type:          newRecord.Type,
@@ -105,7 +108,7 @@ func (a *App) handler() (string, error) {
 
 			paginate = newRecordSets.IsTruncated
 			paginateIdInput := &route53.ListResourceRecordSetsInput{
-				HostedZoneId:          &hostedZoneId,
+				HostedZoneId:          hostedZoneId,
 				StartRecordName:       recordSets.NextRecordName,
 				StartRecordType:       recordSets.NextRecordType,
 				StartRecordIdentifier: recordSets.NextRecordIdentifier,
@@ -117,11 +120,12 @@ func (a *App) handler() (string, error) {
 	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
 
-	trafficErrA := a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
+	trafficErrA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "A")
 	if trafficErrA != nil {
 		return "", trafficErrA
 	}
-	trafficErrAAAA := a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
+	// Can get rid of these and use app ones
+	trafficErrAAAA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "AAAA")
 	if trafficErrAAAA != nil {
 		return "", trafficErrAAAA
 	}
@@ -137,7 +141,7 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 
 	for _, r := range records {
 		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) && weightPercentage != 100 {
-			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
+			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight, recordType, newClusterSuffix)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
 
 			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
@@ -147,7 +151,7 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 			}
 			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
 		} else if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, oldClusterSuffix) && weightPercentage == 100 {
-			resourceRecordSetInput := buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight)
+			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight, recordType, oldClusterSuffix)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
 
 			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
@@ -161,9 +165,9 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 	return nil
 }
 
-func buildChangeTrafficWeightsInput(zoneName string, identifier string, weight int64) *route53.ChangeResourceRecordSetsInput {
-	// Look at this tomorrow - amending this could help me cut down - I do still need to the hostedzoneid from somewhere though
-	record := r53types.ResourceRecordSet{Name: &zoneName, SetIdentifier: &identifier, Weight: &weight}
+func (a *App) buildChangeTrafficWeightsInput(zoneName string, identifier string, weight int64, recordType string, clusterName string) *route53.ChangeResourceRecordSetsInput {
+	aliasTarget := r53types.AliasTarget{DNSName: aws.String(fmt.Sprintf("%s-%s", clusterName, zoneName)), HostedZoneId: &a.config.HostedZoneID, EvaluateTargetHealth: false}
+	record := r53types.ResourceRecordSet{Name: &zoneName, SetIdentifier: &identifier, Weight: &weight, Type: r53types.RRType(recordType), AliasTarget: &aliasTarget}
 	changeInput := r53types.Change{Action: "UPSERT", ResourceRecordSet: &record}
 
 	changeInputArray := make([]r53types.Change, 0)
@@ -171,22 +175,27 @@ func buildChangeTrafficWeightsInput(zoneName string, identifier string, weight i
 
 	changeSet := r53types.ChangeBatch{Changes: changeInputArray}
 	changeWeightInput := &route53.ChangeResourceRecordSetsInput{
-		ChangeBatch: &changeSet,
+		ChangeBatch:  &changeSet,
+		HostedZoneId: &a.config.HostedZoneID,
 	}
+	fmt.Println(changeWeightInput)
 	return changeWeightInput
 }
 
-func convertPerecentageToWeight(trafficSwitchPercentage int64) int64 {
+func convertPerecentageToWeight(trafficSwitchPercentage int64) (int64, error) {
 	var trafficWeight int64
 	switch trafficSwitchPercentage {
 	case 10:
 		trafficWeight = 30
+		return trafficWeight, nil
 	case 50:
 		trafficWeight = 255
+		return trafficWeight, nil
 	case 100:
 		trafficWeight = 0
+		return trafficWeight, nil
 	}
-	return trafficWeight
+	return 0, errors.New("Traffic switch can only be 10, 50 or 100 percent")
 }
 
 func validateClusterNameInputs(records []recordSetInfo, clusterSuffix string) bool {

@@ -9,13 +9,23 @@ import (
 )
 
 type App struct {
-	config        Config
-	route53Client IRoute53
+	config                  Config
+	route53Client           IRoute53
+	oldClusterSuffix        *string
+	newClusterSuffix        *string
+	trafficSwitchPercentage *int64
+	region                  *string
+	environment             *string
 }
 
-func NewApp(config Config) (*App, error) {
+func NewApp(config Config, oldClusterSuffix *string, newClusterSuffix *string, trafficSwitchPercentage *int64, region *string, environment *string) (*App, error) {
 	app := &App{
-		config: config,
+		config:                  config,
+		oldClusterSuffix:        oldClusterSuffix,
+		newClusterSuffix:        newClusterSuffix,
+		trafficSwitchPercentage: trafficSwitchPercentage,
+		region:                  region,
+		environment:             environment,
 	}
 
 	cfg, err := awsconfig.LoadDefaultConfig(context.TODO(), awsconfig.WithRegion(config.AwsRegion))

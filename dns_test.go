@@ -85,7 +85,8 @@ func TestUpdateRecords(t *testing.T) {
 		},
 	}
 
-	app, _ := NewApp(Config{})
+	config, _ := New()
+	app, _ := NewApp(*config, nil, nil, nil, nil, nil)
 	mockR53Client := &mockRoute53Client{}
 	app.route53Client = mockR53Client
 

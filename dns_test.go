@@ -55,7 +55,6 @@ func TestUpdateRecords(t *testing.T) {
 			old:                   "mesh-657",
 			new:                   "mesh-697",
 			records:               recordInfo,
-			weight:                255,
 			inputWeightPercentage: 50,
 			recordType:            "A",
 		},
@@ -65,7 +64,6 @@ func TestUpdateRecords(t *testing.T) {
 			old:                   "mesh-657",
 			new:                   "mesh-697",
 			records:               recordInfo,
-			weight:                0,
 			inputWeightPercentage: 100,
 			recordType:            "AAAA",
 		},
@@ -75,21 +73,18 @@ func TestUpdateRecords(t *testing.T) {
 			old:                   "mesh-xxx",
 			new:                   "mesh-697",
 			records:               recordInfo,
-			weight:                255,
 			inputWeightPercentage: 50,
 			recordType:            "AAAA",
 		},
-		// Need to think of a way of testing this
-		// {
-		// 	name:                  "Modify Route53 records - test incorrect weight input",
-		// 	errorExpected:         true,
-		// 	old:                   "mesh-657",
-		// 	new:                   "mesh-697",
-		// 	records:               recordInfo,
-		// 	weight:                255,
-		// 	inputWeightPercentage: 110,
-		// 	recordType:            "A",
-		// },
+		{
+			name:                  "Modify Route53 records - test incorrect weight input",
+			errorExpected:         true,
+			old:                   "mesh-657",
+			new:                   "mesh-697",
+			records:               recordInfo,
+			inputWeightPercentage: 110,
+			recordType:            "A",
+		},
 	}
 
 	config, _ := New()
@@ -99,7 +94,7 @@ func TestUpdateRecords(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := app.switchTraffic(tt.records, tt.old, tt.new, tt.weight, tt.inputWeightPercentage, tt.recordType)
+			err := app.switchTraffic(tt.records, tt.old, tt.new, tt.inputWeightPercentage, tt.recordType)
 			if tt.errorExpected {
 				assert.Error(t, err)
 			} else {

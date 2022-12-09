@@ -23,11 +23,6 @@ func (a *App) handler() (string, error) {
 
 	ctx := context.TODO()
 
-	trafficWeight, err := convertPerecentageToWeight(*a.trafficSwitchPercentage)
-	if err != nil {
-		return "", err
-	}
-
 	// Will be different for prod - need to add function - intentionally leaving it out for now
 	// dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *a.environment)
 
@@ -90,11 +85,11 @@ func (a *App) handler() (string, error) {
 	}
 
 	// Can get rid of these and use app ones or keep in for unit testing - will implement this better
-	trafficErrA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "A")
+	trafficErrA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, *a.trafficSwitchPercentage, "A")
 	if trafficErrA != nil {
 		return "", trafficErrA
 	}
-	trafficErrAAAA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "AAAA")
+	trafficErrAAAA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, *a.trafficSwitchPercentage, "AAAA")
 	if trafficErrAAAA != nil {
 		return "", trafficErrAAAA
 	}
@@ -102,15 +97,20 @@ func (a *App) handler() (string, error) {
 	return "Successfully switched over traffic", nil
 }
 
-func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weight int64, weightPercentage int64, recordType string) error {
+func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, newClusterSuffix string, weightPercentage int64, recordType string) error {
 
 	if !validateClusterNameInputs(records, oldClusterSuffix) || !validateClusterNameInputs(records, newClusterSuffix) {
 		return errors.New("Error updating cluster.  One of the clusters you input possibly does not exist")
 	}
 
+	trafficWeight, err := convertPerecentageToWeight(weightPercentage)
+	if err != nil {
+		return err
+	}
+
 	for _, r := range records {
 		if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, newClusterSuffix) && weightPercentage != 100 {
-			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight, recordType, newClusterSuffix)
+			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, trafficWeight, recordType, newClusterSuffix)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
 
 			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)
@@ -120,7 +120,7 @@ func (a *App) switchTraffic(records []recordSetInfo, oldClusterSuffix string, ne
 			}
 			fmt.Printf("Successfully processed Route53 change: %s", *resp.ChangeInfo.Id)
 		} else if r.Type == r53types.RRType(recordType) && strings.Contains(r.SetIdentifier, oldClusterSuffix) && weightPercentage == 100 {
-			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, weight, recordType, oldClusterSuffix)
+			resourceRecordSetInput := a.buildChangeTrafficWeightsInput(r.Name, r.SetIdentifier, trafficWeight, recordType, oldClusterSuffix)
 			fmt.Printf("Switching %v percent of traffic from %s cluster to %s cluster - %s Type record\n", weightPercentage, oldClusterSuffix, r.SetIdentifier, r.Type)
 
 			resp, err := a.route53Client.ChangeResourceRecordSets(context.TODO(), resourceRecordSetInput)

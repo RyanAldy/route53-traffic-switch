@@ -12,11 +12,6 @@ import (
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
-// type hostedZoneInfo struct {
-// 	Id   string
-// 	Name string
-// }
-
 type recordSetInfo struct {
 	Name          string
 	Type          r53types.RRType
@@ -35,31 +30,6 @@ func (a *App) handler() (string, error) {
 
 	// Will be different for prod - need to add function
 	// dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *a.environment)
-
-	// hostedZoneInput := &route53.ListHostedZonesByNameInput{
-	// 	DNSName: &dnsInput,
-	// }
-	// fmt.Println(*hostedZoneInput)
-
-	// hostedZonesResult, err := a.route53Client.ListHostedZonesByName(ctx, hostedZoneInput)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println(*hostedZonesResult)
-
-	// extractedInfo := hostedZonesResult.HostedZones
-
-	// zoneInfo := []hostedZoneInfo{}
-	// for _, info := range extractedInfo {
-	// 	zoneInfo = append(zoneInfo, hostedZoneInfo{Id: *info.Id, Name: *info.Name})
-	// }
-
-	// var hostedZoneId string
-	// for _, zone := range zoneInfo {
-	// 	if zone.Name == dnsInput {
-	// 		hostedZoneId = zone.Id
-	// 	}
-	// }
 
 	// hostedZoneId := "Z080964036XWOHXR8180L"
 
@@ -124,7 +94,7 @@ func (a *App) handler() (string, error) {
 	if trafficErrA != nil {
 		return "", trafficErrA
 	}
-	// Can get rid of these and use app ones
+	// Can get rid of these and use app ones or keep in for unit testing
 	trafficErrAAAA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "AAAA")
 	if trafficErrAAAA != nil {
 		return "", trafficErrAAAA

@@ -28,7 +28,7 @@ func (a *App) handler() (string, error) {
 		return "", err
 	}
 
-	// Will be different for prod - need to add function
+	// Will be different for prod - need to add function - intentionally leaving it out for now
 	// dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *a.environment)
 
 	// hostedZoneId := "Z080964036XWOHXR8180L"
@@ -87,14 +87,11 @@ func (a *App) handler() (string, error) {
 		}
 	}
 
-	// For Debugging only
-	// fmt.Println("Record Info: ", recordInfo)
-
+	// Can get rid of these and use app ones or keep in for unit testing - will implement this better
 	trafficErrA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "A")
 	if trafficErrA != nil {
 		return "", trafficErrA
 	}
-	// Can get rid of these and use app ones or keep in for unit testing
 	trafficErrAAAA := a.switchTraffic(recordInfo, *a.oldClusterSuffix, *a.newClusterSuffix, trafficWeight, *a.trafficSwitchPercentage, "AAAA")
 	if trafficErrAAAA != nil {
 		return "", trafficErrAAAA

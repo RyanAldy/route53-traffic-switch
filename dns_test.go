@@ -26,10 +26,6 @@ func (r mockRoute53Client) ChangeResourceRecordSets(ctx context.Context, input *
 	}, nil
 }
 
-func (r mockRoute53Client) ListHostedZonesByName(ctx context.Context, params *route53.ListHostedZonesByNameInput, optFns ...func(*route53.Options)) (*route53.ListHostedZonesByNameOutput, error) {
-	return &route53.ListHostedZonesByNameOutput{}, nil
-}
-
 func (r mockRoute53Client) ListResourceRecordSets(ctx context.Context, params *route53.ListResourceRecordSetsInput, optFns ...func(*route53.Options)) (*route53.ListResourceRecordSetsOutput, error) {
 	return &route53.ListResourceRecordSetsOutput{}, nil
 }

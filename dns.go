@@ -31,6 +31,7 @@ func (a *App) handler() (string, error) {
 	// Will be different for prod - need to add function - intentionally leaving it out for now
 	// dnsInput := fmt.Sprintf("%s.dazn-gateway.com", *a.environment)
 
+	// internal-dev id for testing
 	// hostedZoneId := "Z080964036XWOHXR8180L"
 
 	hostedZoneId := &a.config.HostedZoneID
@@ -41,8 +42,9 @@ func (a *App) handler() (string, error) {
 
 	recordSets, err := a.route53Client.ListResourceRecordSets(ctx, idInput)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		return "", err
 	}
+
 	recordInfo := []recordSetInfo{}
 	for _, record := range recordSets.ResourceRecordSets {
 		if *record.Name == fmt.Sprintf("%s.%s.dazn-gateway.com.", *a.region, *a.environment) {

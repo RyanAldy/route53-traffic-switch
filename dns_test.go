@@ -79,6 +79,17 @@ func TestUpdateRecords(t *testing.T) {
 			inputWeightPercentage: 50,
 			recordType:            "AAAA",
 		},
+		// Need to think of a way of testing this
+		// {
+		// 	name:                  "Modify Route53 records - test incorrect weight input",
+		// 	errorExpected:         true,
+		// 	old:                   "mesh-657",
+		// 	new:                   "mesh-697",
+		// 	records:               recordInfo,
+		// 	weight:                255,
+		// 	inputWeightPercentage: 110,
+		// 	recordType:            "A",
+		// },
 	}
 
 	config, _ := New()

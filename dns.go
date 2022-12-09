@@ -12,6 +12,18 @@ import (
 	r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 )
 
+type hostedZoneInfo struct {
+	Id   string
+	Name string
+}
+
+type recordSetInfo struct {
+	Name          string
+	Type          r53types.RRType
+	SetIdentifier string
+	Weight        int64
+}
+
 func (a *App) handler() (string, error) {
 
 	ctx := context.TODO()
@@ -105,9 +117,14 @@ func (a *App) handler() (string, error) {
 	// For Debugging only
 	// fmt.Println("Record Info: ", recordInfo)
 
-	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
-	a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
-	// Need to catch error from this function call
+	trafficErrA := a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "A")
+	if trafficErrA != nil {
+		return "", trafficErrA
+	}
+	trafficErrAAAA := a.switchTraffic(recordInfo, *oldClusterSuffix, *newClusterSuffix, trafficWeight, *trafficSwitchPercentage, "AAAA")
+	if trafficErrAAAA != nil {
+		return "", trafficErrAAAA
+	}
 
 	return "Successfully switched over traffic", nil
 }

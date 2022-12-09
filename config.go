@@ -1,21 +1,23 @@
 package main
 
-import r53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+import (
+	"context"
 
-type hostedZoneInfo struct {
-	Id   string
-	Name string
-}
-
-type recordSetInfo struct {
-	Name          string
-	Type          r53types.RRType
-	SetIdentifier string
-	Weight        int64
-}
+	"github.com/pkg/errors"
+	"github.com/sethvargo/go-envconfig"
+)
 
 type Config struct {
+	Env       string `env:"ENV" envDefault:"dev"`
 	AppName   string `env:"APP_NAME,default=dns-switchover"`
 	Owner     string `env:"OWNER,default=mesh@dazn.com"`
 	AwsRegion string `env:"AWS_REGION,default=eu-central-1"`
+}
+
+func New() (*Config, error) {
+	var c Config
+	if err := envconfig.Process(context.Background(), &c); err != nil {
+		return nil, errors.Wrapf(err, "failed to process config")
+	}
+	return &c, nil
 }

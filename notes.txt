@@ -40,6 +40,8 @@
 
 // Write unit tests for failures (clusters not existing etc)
 // From this do TDD for checking input percentages
+// *** Need to create function to check percentages
+// *** Also need to look at whether I can cut down the code
 
 // Finally:
 // Structure code into correct GoLang directory structure

@@ -4,20 +4,21 @@ import (
 	"context"
 	"log"
 
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 )
 
 type App struct {
-	// config        *config.Config
+	config        Config
 	route53Client IRoute53
 }
 
-func New() (*App, error) {
-	app := &App{}
+func NewApp(config Config) (*App, error) {
+	app := &App{
+		config: config,
+	}
 
-	// To be parameterised also - region
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("eu-central-1"))
+	cfg, err := awsconfig.LoadDefaultConfig(context.TODO(), awsconfig.WithRegion(config.AwsRegion))
 	if err != nil {
 		log.Fatalf("failed to load configuration, %v", err)
 	}
